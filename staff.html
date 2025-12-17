@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neo Staff | Login Required</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .login-gradient { background: radial-gradient(circle at top right, #292524, #0c0a09); }
+    </style>
+</head>
+<body class="bg-stone-950 text-stone-100 min-h-screen font-sans">
+
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center login-gradient p-6">
+        <div class="w-full max-w-md bg-stone-900/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-stone-800 shadow-2xl">
+            <div class="text-center mb-8">
+                <div class="inline-block p-4 bg-orange-500/10 rounded-3xl mb-4">
+                    <span class="text-3xl">☕</span>
+                </div>
+                <h2 class="text-2xl font-black tracking-tighter uppercase">Barista Access</h2>
+                <p class="text-xs text-stone-500 font-bold tracking-widest uppercase mt-2">Neo Cafe Cloud System</p>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <input type="email" id="email" placeholder="Email Address" 
+                        class="w-full bg-stone-800 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-orange-500 transition-all outline-none">
+                </div>
+                <div>
+                    <input type="password" id="password" placeholder="Password" 
+                        class="w-full bg-stone-800 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-orange-500 transition-all outline-none">
+                </div>
+                <button onclick="handleLogin()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg active:scale-95">
+                    LOGIN TO KITCHEN
+                </button>
+                <p id="loginError" class="text-red-500 text-[10px] font-bold text-center uppercase tracking-tighter hidden">Invalid credentials</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden opacity-0 transition-opacity duration-1000 p-6">
+        <header class="max-w-7xl mx-auto flex justify-between items-end mb-12 border-b border-stone-800 pb-6">
+            <div>
+                <h1 class="text-4xl font-black tracking-tighter text-orange-500 italic">KITCHEN BOARD</h1>
+                <p class="text-xs font-bold uppercase tracking-[0.3em] text-stone-500">Live Order Stream</p>
+            </div>
+            <button onclick="location.reload()" class="text-[10px] font-black bg-stone-800 text-stone-400 px-4 py-2 rounded-full border border-stone-700 hover:bg-red-500/10 hover:text-red-500 transition-all">
+                LOGOUT
+            </button>
+        </header>
+
+        <main class="max-w-7xl mx-auto">
+            <div id="orderGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                </div>
+        </main>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, query, orderBy, onSnapshot, doc, updateDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB0oZTgXq53QhnCQ0b_yNiK0gqgNPoZfZY",
+            authDomain: "studio-3970565730-228ab.firebaseapp.com",
+            projectId: "studio-3970565730-228ab",
+            storageBucket: "studio-3970565730-228ab.firebasestorage.app",
+            messagingSenderId: "37450619696",
+            appId: "1:37450619696:web:3451173110f2d5d3db86f5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- LOGIN LOGIC ---
+        window.handleLogin = () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            const error = document.getElementById('loginError');
+
+            if(email === "barista@neocafe.com" && pass === "neocafe123") {
+                document.getElementById('loginScreen').classList.add('hidden');
+                const dash = document.getElementById('dashboard');
+                dash.classList.remove('hidden');
+                setTimeout(() => dash.classList.add('opacity-100'), 50);
+                startOrderListener();
+            } else {
+                error.classList.remove('hidden');
+                setTimeout(() => error.classList.add('hidden'), 3000);
+            }
+        };
+
+        // --- ORDER DASHBOARD LOGIC ---
+        function startOrderListener() {
+            const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+
+            onSnapshot(q, (snapshot) => {
+                const grid = document.getElementById('orderGrid');
+                grid.innerHTML = '';
+
+                snapshot.forEach((orderDoc) => {
+                    const order = orderDoc.data();
+                    if(order.status === "Collected") return;
+
+                    const card = document.createElement('div');
+                    card.className = "bg-stone-900 p-6 rounded-[2rem] border border-stone-800 shadow-2xl relative transition-all hover:border-orange-500/30";
+                    
+                    const itemsHtml = order.items 
+                        ? order.items.map(i => `<li class="text-orange-100 font-bold text-lg leading-tight">• ${i}</li>`).join('')
+                        : `<li class="text-orange-100 font-bold">• ${order.item}</li>`;
+
+                    card.innerHTML = `
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="text-4xl font-black text-white">${order.orderNumber}</span>
+                            <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase ${getStatusStyle(order.status)}">${order.status}</span>
+                        </div>
+                        
+                        <ul class="space-y-2 mb-6">${itemsHtml}</ul>
+
+                        <div class="bg-stone-800/50 p-4 rounded-2xl mb-6 border border-stone-800">
+                            <p class="text-[9px] font-black text-stone-500 uppercase tracking-widest mb-1">Notes</p>
+                            <p class="text-sm italic text-stone-300">"${order.notes}"</p>
+                        </div>
+
+                        <div class="flex gap-2">
+                            ${getActionButtons(orderDoc.id, order.status)}
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            });
+        }
+
+        function getStatusStyle(status) {
+            if(status === 'New') return 'bg-orange-600 text-white';
+            if(status === 'Preparing') return 'bg-blue-600 text-white';
+            return 'bg-green-600 text-white';
+        }
+
+        function getActionButtons(id, status) {
+            if(status === 'New') return `<button onclick="updateStatus('${id}', 'Preparing')" class="flex-1 bg-stone-800 hover:bg-stone-700 py-4 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all">Start Preparing</button>`;
+            if(status === 'Preparing') return `<button onclick="updateStatus('${id}', 'Ready')" class="flex-1 bg-blue-600 hover:bg-blue-500 py-4 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all">Mark as Ready</button>`;
+            return `
+                <button onclick="updateStatus('${id}', 'Collected')" class="flex-1 bg-green-600 hover:bg-green-500 py-4 rounded-2xl text-[10px] font-black tracking-widest uppercase transition-all">Collected</button>
+                <button onclick="deleteOrder('${id}')" class="bg-red-500/10 text-red-500 px-5 rounded-2xl hover:bg-red-500 hover:text-white transition-all">✕</button>
+            `;
+        }
+
+        window.updateStatus = async (id, newStatus) => {
+            await updateDoc(doc(db, "orders", id), { status: newStatus });
+        };
+
+        window.deleteOrder = async (id) => {
+            if(confirm("Permanently archive this order?")) {
+                await deleteDoc(doc(db, "orders", id));
+            }
+        };
+    </script>
+</body>
+</html>

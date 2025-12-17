@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neo Insights | Manager Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); }
+        .login-bg { background: radial-gradient(circle at bottom left, #1c1917, #0c0a09); }
+    </style>
+</head>
+<body class="bg-stone-950 text-stone-100 min-h-screen font-sans">
+
+    <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center login-bg p-6">
+        <div class="w-full max-w-md bg-stone-900/40 p-10 rounded-[3rem] border border-stone-800 shadow-2xl text-center">
+            <div class="w-20 h-20 bg-orange-600 rounded-3xl mx-auto mb-6 flex items-center justify-center text-3xl shadow-lg shadow-orange-900/20">📈</div>
+            <h2 class="text-3xl font-black tracking-tighter uppercase mb-2">Manager Login</h2>
+            <p class="text-[10px] font-bold text-stone-500 uppercase tracking-[0.3em] mb-8">Executive Insights Portal</p>
+            
+            <div class="space-y-4 text-left">
+                <input type="email" id="email" placeholder="Manager Email" 
+                    class="w-full bg-stone-800/50 border border-stone-700 rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-orange-500 transition-all">
+                <input type="password" id="password" placeholder="Access Key" 
+                    class="w-full bg-stone-800/50 border border-stone-700 rounded-2xl py-4 px-6 outline-none focus:ring-2 focus:ring-orange-500 transition-all">
+                <button onclick="handleLogin()" class="w-full bg-stone-100 text-stone-900 font-black py-4 rounded-2xl hover:bg-white transition-all active:scale-95 mt-4">
+                    ENTER DASHBOARD
+                </button>
+                <p id="loginError" class="text-red-500 text-[10px] font-black text-center uppercase hidden">Unauthorized Access</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboard" class="hidden opacity-0 transition-opacity duration-700 max-w-6xl mx-auto p-6 pt-12">
+        <header class="flex justify-between items-center mb-12">
+            <div>
+                <h1 class="text-5xl font-black tracking-tighter italic">INSIGHTS</h1>
+                <p class="text-xs font-bold text-stone-500 uppercase tracking-widest mt-1">Live Revenue & Analytics</p>
+            </div>
+            <button onclick="location.reload()" class="bg-stone-900 border border-stone-800 px-6 py-2 rounded-full text-[10px] font-bold uppercase hover:bg-red-500/10 hover:text-red-500 transition-all">
+                Logout
+            </button>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div class="glass p-8 rounded-[2.5rem] border border-stone-800">
+                <p class="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-2">Gross Revenue</p>
+                <h2 id="totalRev" class="text-4xl font-black text-orange-500">€0.00</h2>
+            </div>
+            <div class="glass p-8 rounded-[2.5rem] border border-stone-800">
+                <p class="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-2">Total Orders</p>
+                <h2 id="totalOrders" class="text-4xl font-black">0</h2>
+            </div>
+            <div class="glass p-8 rounded-[2.5rem] border border-stone-800">
+                <p class="text-[10px] font-black text-stone-500 uppercase tracking-widest mb-2">Avg. Order Value</p>
+                <h2 id="avgOrder" class="text-4xl font-black">€0.00</h2>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div class="glass p-8 rounded-[3rem] border border-stone-800">
+                <h3 class="text-xl font-black uppercase mb-6 tracking-tighter">Recent Sales</h3>
+                <div id="orderLog" class="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+                    </div>
+            </div>
+
+            <div class="glass p-8 rounded-[3rem] border border-stone-800">
+                <h3 class="text-xl font-black uppercase mb-6 tracking-tighter">Inventory Pulse</h3>
+                <div class="space-y-8">
+                    <p class="text-xs text-stone-400">Total data points currently being synced from Neo Cloud.</p>
+                    <div id="categoryStats" class="space-y-6">
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB0oZTgXq53QhnCQ0b_yNiK0gqgNPoZfZY",
+            authDomain: "studio-3970565730-228ab.firebaseapp.com",
+            projectId: "studio-3970565730-228ab",
+            storageBucket: "studio-3970565730-228ab.firebasestorage.app",
+            messagingSenderId: "37450619696",
+            appId: "1:37450619696:web:3451173110f2d5d3db86f5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // --- LOGIN LOGIC ---
+        window.handleLogin = () => {
+            const email = document.getElementById('email').value;
+            const pass = document.getElementById('password').value;
+            const error = document.getElementById('loginError');
+
+            if(email === "manager@neocafe.com" && pass === "neocafe123") {
+                document.getElementById('loginScreen').classList.add('hidden');
+                const dash = document.getElementById('dashboard');
+                dash.classList.remove('hidden');
+                setTimeout(() => dash.classList.add('opacity-100'), 50);
+                startAnalyticsStream();
+            } else {
+                error.classList.remove('hidden');
+                setTimeout(() => error.classList.add('hidden'), 3000);
+            }
+        };
+
+        // --- ANALYTICS LOGIC ---
+        function startAnalyticsStream() {
+            const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+
+            onSnapshot(q, (snapshot) => {
+                let total = 0;
+                let count = 0;
+                const log = document.getElementById('orderLog');
+                log.innerHTML = '';
+
+                snapshot.forEach((doc) => {
+                    const data = doc.data();
+                    const orderTotal = data.totalPrice || 0;
+                    total += orderTotal;
+                    count++;
+
+                    // Render recent sales list
+                    const item = document.createElement('div');
+                    item.className = "flex justify-between items-center p-4 bg-stone-900/50 rounded-2xl border border-stone-800";
+                    item.innerHTML = `
+                        <div>
+                            <p class="text-xs font-black text-white">${data.orderNumber}</p>
+                            <p class="text-[9px] text-stone-500 uppercase">${data.items?.length || 1} Items</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-sm font-bold text-orange-400">€${orderTotal.toFixed(2)}</p>
+                        </div>
+                    `;
+                    log.appendChild(item);
+                });
+
+                // Update KPI Cards
+                document.getElementById('totalRev').innerText = `€${total.toFixed(2)}`;
+                document.getElementById('totalOrders').innerText = count;
+                const avg = count > 0 ? total / count : 0;
+                document.getElementById('avgOrder').innerText = `€${avg.toFixed(2)}`;
+            });
+        }
+    </script>
+</body>
+</html>

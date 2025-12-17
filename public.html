@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neo Cafe | Digital Menu</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .cart-drawer { transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .category-pill.active { background-color: #292524; color: white; border-color: #292524; }
+    </style>
+</head>
+<body class="bg-stone-50 font-sans text-stone-900 no-scrollbar">
+
+    <nav class="sticky top-0 bg-white/90 backdrop-blur-md z-40 border-b border-stone-200">
+        <div class="max-w-4xl mx-auto p-4 flex justify-between items-center">
+            <div>
+                <h1 class="text-2xl font-black tracking-tighter text-stone-800">NEO CAFE</h1>
+                <p class="text-[9px] font-bold uppercase tracking-[0.2em] text-stone-400">Premium Digital Brew</p>
+            </div>
+            <button onclick="toggleCart()" class="relative p-3 bg-stone-100 rounded-2xl transition-transform active:scale-90">
+                🛒 <span id="cartCount" class="absolute -top-1 -right-1 bg-orange-600 text-white text-[10px] w-5 h-5 flex items-center justify-center rounded-full font-bold">0</span>
+            </button>
+        </div>
+        
+        <div class="flex gap-3 overflow-x-auto p-4 no-scrollbar max-w-4xl mx-auto">
+            <button onclick="filterMenu('all')" class="category-pill active px-5 py-2 rounded-full border border-stone-200 text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all">All</button>
+            <button onclick="filterMenu('Hot Coffee')" class="category-pill px-5 py-2 rounded-full border border-stone-200 text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all">Hot Coffee</button>
+            <button onclick="filterMenu('Cold Coffee')" class="category-pill px-5 py-2 rounded-full border border-stone-200 text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all">Cold Coffee</button>
+            <button onclick="filterMenu('Snacks')" class="category-pill px-5 py-2 rounded-full border border-stone-200 text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all">Snacks</button>
+            <button onclick="filterMenu('Other Drinks')" class="category-pill px-5 py-2 rounded-full border border-stone-200 text-xs font-bold whitespace-nowrap uppercase tracking-wider transition-all">Other</button>
+        </div>
+    </nav>
+
+    <main class="max-w-4xl mx-auto p-4 pb-40">
+        <div id="menuGrid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"></div>
+    </main>
+
+    <div id="cartSummary" class="fixed bottom-0 left-0 right-0 bg-stone-900 text-white p-8 transform translate-y-full cart-drawer z-50 rounded-t-[3rem] shadow-2xl">
+        <div class="max-w-xl mx-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-black italic uppercase">Your Bag</h3>
+                <button onclick="toggleCart()" class="w-10 h-10 bg-stone-800 rounded-full flex items-center justify-center text-xl">✕</button>
+            </div>
+            
+            <div id="cartItems" class="space-y-4 mb-8 max-h-48 overflow-y-auto pr-2 no-scrollbar"></div>
+
+            <div class="space-y-4">
+                <div class="bg-stone-800 p-4 rounded-2xl">
+                    <label class="text-[10px] font-black text-stone-500 uppercase tracking-widest block mb-2">Personal Notes</label>
+                    <textarea id="personalNotes" placeholder="Special instructions (extra sugar, oat milk...)" 
+                        class="w-full bg-transparent text-sm outline-none resize-none h-16"></textarea>
+                </div>
+                
+                <button id="submitBtn" onclick="placeOrder()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-5 rounded-2xl transition-all flex justify-between px-8 shadow-xl">
+                    <span>CONFIRM ORDER</span>
+                    <span id="totalPrice">€0.00</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyB0oZTgXq53QhnCQ0b_yNiK0gqgNPoZfZY",
+            authDomain: "studio-3970565730-228ab.firebaseapp.com",
+            projectId: "studio-3970565730-228ab",
+            storageBucket: "studio-3970565730-228ab.firebasestorage.app",
+            messagingSenderId: "37450619696",
+            appId: "1:37450619696:web:3451173110f2d5d3db86f5"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        const menuData = [
+            { category: 'Hot Coffee', name: 'Americano', price: 3.50, img: 'https://i.postimg.cc/ht2KBkLK/americano.png' },
+            { category: 'Hot Coffee', name: 'Cappuccino', price: 4.50, img: 'https://i.postimg.cc/g2gGWCVL/capchino.png' },
+            { category: 'Hot Coffee', name: 'Espresso', price: 3.00, img: 'https://i.postimg.cc/QMVhxfmf/espresso.png' },
+            { category: 'Hot Coffee', name: 'Latte', price: 4.50, img: 'https://i.postimg.cc/R0q4Vgdy/latte.png' },
+            { category: 'Hot Coffee', name: 'Mocha', price: 4.75, img: 'https://i.postimg.cc/1z4s5vBb/mocha.png' },
+            { category: 'Cold Coffee', name: 'Caramel Frappuccino', price: 5.50, img: 'https://i.postimg.cc/6pMBXkrr/caramel-frappe.png' },
+            { category: 'Cold Coffee', name: 'Cold Coffee', price: 4.25, img: 'https://i.postimg.cc/43nsNWPp/cold-coff.png' },
+            { category: 'Snacks', name: 'Butter Croissant', price: 3.75, img: 'https://i.postimg.cc/2S0CDsQd/butter-cross.png' },
+            { category: 'Snacks', name: 'Chocolate Scones', price: 3.95, img: 'https://i.postimg.cc/4xWXgD6b/choc-scones.png' },
+            { category: 'Snacks', name: 'Pistachio Croissant', price: 4.50, img: 'https://i.postimg.cc/YSjMqd8c/pis-cross.png' },
+            { category: 'Other Drinks', name: 'Hot Chocolate', price: 4.00, img: 'https://i.postimg.cc/wB3gTw2W/hot-choc.png' },
+            { category: 'Other Drinks', name: 'Dark Chocolate', price: 4.50, img: 'https://i.postimg.cc/Dzmnyx6g/dark-choc.png' }
+        ];
+
+        let cart = [];
+
+        window.filterMenu = (category) => {
+            document.querySelectorAll('.category-pill').forEach(p => {
+                p.classList.remove('active');
+                if(p.innerText.toLowerCase() === category.toLowerCase() || (category === 'all' && p.innerText === 'All')) p.classList.add('active');
+            });
+            const filtered = category === 'all' ? menuData : menuData.filter(i => i.category === category);
+            renderMenu(filtered);
+        };
+
+        function renderMenu(items) {
+            const grid = document.getElementById('menuGrid');
+            if(!grid) return;
+            grid.innerHTML = '';
+            items.forEach(item => {
+                const div = document.createElement('div');
+                div.className = "bg-white rounded-3xl overflow-hidden shadow-sm border border-stone- stone-100 flex flex-col group";
+                div.innerHTML = `
+                    <div class="relative h-40 overflow-hidden bg-stone-100">
+                        <img src="${item.img}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                    </div>
+                    <div class="p-4 flex-1 flex flex-col justify-between">
+                        <div class="mb-4">
+                            <p class="text-[8px] font-black text-stone-400 uppercase tracking-widest mb-1">${item.category}</p>
+                            <h3 class="font-bold text-sm leading-tight">${item.name}</h3>
+                        </div>
+                        <button onclick="addToCart('${item.name}', ${item.price})" class="w-full bg-stone-900 text-white py-2.5 rounded-xl text-[10px] font-black tracking-widest transition-transform active:scale-95">
+                            ADD • €${item.price.toFixed(2)}
+                        </button>
+                    </div>
+                `;
+                grid.appendChild(div);
+            });
+        }
+
+        window.addToCart = (name, price) => {
+            cart.push({ name, price });
+            updateUI();
+            if(document.getElementById('cartSummary').classList.contains('translate-y-full')) toggleCart();
+        };
+
+        window.toggleCart = () => {
+            const drawer = document.getElementById('cartSummary');
+            if(drawer) drawer.classList.toggle('translate-y-full');
+        };
+
+        function updateUI() {
+            const countElem = document.getElementById('cartCount');
+            const listElem = document.getElementById('cartItems');
+            const totalElem = document.getElementById('totalPrice');
+            
+            if(countElem) countElem.innerText = cart.length;
+            if(listElem) {
+                listElem.innerHTML = '';
+                let total = 0;
+                cart.forEach((item, index) => {
+                    total += item.price;
+                    listElem.innerHTML += `
+                        <div class="flex justify-between items-center bg-stone-800/50 p-3 rounded-xl">
+                            <span class="text-xs font-bold">${item.name}</span>
+                            <div class="flex items-center gap-4">
+                                <span class="text-xs text-stone-400">€${item.price.toFixed(2)}</span>
+                                <button onclick="removeFromCart(${index})" class="text-red-500 text-xs">✕</button>
+                            </div>
+                        </div>
+                    `;
+                });
+                if(totalElem) totalElem.innerText = `€${total.toFixed(2)}`;
+            }
+        }
+
+        window.removeFromCart = (index) => {
+            cart.splice(index, 1);
+            updateUI();
+            if(cart.length === 0) toggleCart();
+        };
+
+        window.placeOrder = async () => {
+            if(cart.length === 0) return;
+            const btn = document.getElementById('submitBtn');
+            // FIX: Generate exactly 2-digit random number (10 to 99)
+            const orderNum = `NEO-${Math.floor(10 + Math.random() * 90)}`;
+            
+            btn.disabled = true;
+            btn.innerText = "SENDING...";
+
+            try {
+                await addDoc(collection(db, "orders"), {
+                    orderNumber: orderNum,
+                    items: cart.map(i => i.name),
+                    notes: document.getElementById('personalNotes').value || "No special notes",
+                    status: "New",
+                    totalPrice: cart.reduce((sum, item) => sum + item.price, 0),
+                    createdAt: serverTimestamp()
+                });
+                
+                alert(`SUCCESS! YOUR ORDER IS: ${orderNum}`);
+                
+                // Clear state
+                cart = [];
+                updateUI();
+                toggleCart();
+                document.getElementById('personalNotes').value = '';
+            } catch (err) {
+                alert("Cloud Error: " + err.message + "\n\nTip: Double-check Firestore Rules are in TEST MODE.");
+            } finally {
+                btn.disabled = false;
+                btn.innerText = "CONFIRM ORDER";
+            }
+        };
+
+        renderMenu(menuData);
+    </script>
+</body>
+</html>
