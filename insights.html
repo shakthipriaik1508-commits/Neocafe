@@ -14,6 +14,15 @@
 
     <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center login-bg p-6">
         <div class="w-full max-w-md bg-stone-900/40 p-10 rounded-[3rem] border border-stone-800 shadow-2xl text-center">
+            
+            <div class="mb-8 p-4 bg-orange-600/10 border border-orange-600/20 rounded-2xl text-center">
+                <p class="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-2">Manager Assessment Credentials</p>
+                <div class="flex flex-col gap-1">
+                    <p class="text-xs font-mono text-stone-300">User: <span class="text-white">manager@neocafe.com</span></p>
+                    <p class="text-xs font-mono text-stone-300">Pass: <span class="text-white">neocafe123</span></p>
+                </div>
+            </div>
+
             <div class="w-20 h-20 bg-orange-600 rounded-3xl mx-auto mb-6 flex items-center justify-center text-3xl shadow-lg shadow-orange-900/20">📈</div>
             <h2 class="text-3xl font-black tracking-tighter uppercase mb-2">Manager Login</h2>
             <p class="text-[10px] font-bold text-stone-500 uppercase tracking-[0.3em] mb-8">Executive Insights Portal</p>
@@ -66,7 +75,7 @@
 
             <div class="glass p-8 rounded-[3rem] border border-stone-800">
                 <h3 class="text-xl font-black uppercase mb-6 tracking-tighter">Inventory Pulse</h3>
-                <div class="space-y-8">
+                <div class="space-y-4">
                     <p class="text-xs text-stone-400">Total data points currently being synced from Neo Cloud.</p>
                     <div id="categoryStats" class="space-y-6">
                         </div>
@@ -91,7 +100,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- LOGIN LOGIC ---
         window.handleLogin = () => {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
@@ -109,10 +117,8 @@
             }
         };
 
-        // --- ANALYTICS LOGIC ---
         function startAnalyticsStream() {
             const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-
             onSnapshot(q, (snapshot) => {
                 let total = 0;
                 let count = 0;
@@ -125,7 +131,6 @@
                     total += orderTotal;
                     count++;
 
-                    // Render recent sales list
                     const item = document.createElement('div');
                     item.className = "flex justify-between items-center p-4 bg-stone-900/50 rounded-2xl border border-stone-800";
                     item.innerHTML = `
@@ -140,7 +145,6 @@
                     log.appendChild(item);
                 });
 
-                // Update KPI Cards
                 document.getElementById('totalRev').innerText = `€${total.toFixed(2)}`;
                 document.getElementById('totalOrders').innerText = count;
                 const avg = count > 0 ? total / count : 0;

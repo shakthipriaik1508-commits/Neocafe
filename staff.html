@@ -13,6 +13,15 @@
 
     <div id="loginScreen" class="fixed inset-0 z-50 flex items-center justify-center login-gradient p-6">
         <div class="w-full max-w-md bg-stone-900/50 backdrop-blur-xl p-8 rounded-[2.5rem] border border-stone-800 shadow-2xl">
+            
+            <div class="mb-8 p-4 bg-orange-500/10 border border-orange-500/20 rounded-2xl text-center">
+                <p class="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-2">Assessment Credentials</p>
+                <div class="flex flex-col gap-1">
+                    <p class="text-xs font-mono text-stone-300">User: <span class="text-white">barista@neocafe.com</span></p>
+                    <p class="text-xs font-mono text-stone-300">Pass: <span class="text-white">neocafe123</span></p>
+                </div>
+            </div>
+
             <div class="text-center mb-8">
                 <div class="inline-block p-4 bg-orange-500/10 rounded-3xl mb-4">
                     <span class="text-3xl">☕</span>
@@ -22,14 +31,11 @@
             </div>
             
             <div class="space-y-4">
-                <div>
-                    <input type="email" id="email" placeholder="Email Address" 
-                        class="w-full bg-stone-800 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-orange-500 transition-all outline-none">
-                </div>
-                <div>
-                    <input type="password" id="password" placeholder="Password" 
-                        class="w-full bg-stone-800 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-orange-500 transition-all outline-none">
-                </div>
+                <input type="email" id="email" placeholder="Email Address" 
+                    class="w-full bg-stone-800 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-orange-500 transition-all outline-none">
+                <input type="password" id="password" placeholder="Password" 
+                    class="w-full bg-stone-800 border-none rounded-2xl py-4 px-6 text-sm focus:ring-2 focus:ring-orange-500 transition-all outline-none">
+                
                 <button onclick="handleLogin()" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg active:scale-95">
                     LOGIN TO KITCHEN
                 </button>
@@ -71,7 +77,6 @@
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
 
-        // --- LOGIN LOGIC ---
         window.handleLogin = () => {
             const email = document.getElementById('email').value;
             const pass = document.getElementById('password').value;
@@ -89,21 +94,16 @@
             }
         };
 
-        // --- ORDER DASHBOARD LOGIC ---
         function startOrderListener() {
             const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-
             onSnapshot(q, (snapshot) => {
                 const grid = document.getElementById('orderGrid');
                 grid.innerHTML = '';
-
                 snapshot.forEach((orderDoc) => {
                     const order = orderDoc.data();
                     if(order.status === "Collected") return;
-
                     const card = document.createElement('div');
                     card.className = "bg-stone-900 p-6 rounded-[2rem] border border-stone-800 shadow-2xl relative transition-all hover:border-orange-500/30";
-                    
                     const itemsHtml = order.items 
                         ? order.items.map(i => `<li class="text-orange-100 font-bold text-lg leading-tight">• ${i}</li>`).join('')
                         : `<li class="text-orange-100 font-bold">• ${order.item}</li>`;
@@ -113,14 +113,11 @@
                             <span class="text-4xl font-black text-white">${order.orderNumber}</span>
                             <span class="px-3 py-1 rounded-full text-[9px] font-black uppercase ${getStatusStyle(order.status)}">${order.status}</span>
                         </div>
-                        
                         <ul class="space-y-2 mb-6">${itemsHtml}</ul>
-
                         <div class="bg-stone-800/50 p-4 rounded-2xl mb-6 border border-stone-800">
                             <p class="text-[9px] font-black text-stone-500 uppercase tracking-widest mb-1">Notes</p>
                             <p class="text-sm italic text-stone-300">"${order.notes}"</p>
                         </div>
-
                         <div class="flex gap-2">
                             ${getActionButtons(orderDoc.id, order.status)}
                         </div>
